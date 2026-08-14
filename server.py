@@ -7,6 +7,13 @@ import base64
 import io
 import os
 import sys
+from pathlib import Path
+from typing import List, Optional
+from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from PIL import Image
 
 # Setup folder paths and add project root to sys.path for Render deployment
 BASE_DIR = Path(__file__).resolve().parent
