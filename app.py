@@ -99,21 +99,38 @@ def main():
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🔑 API Configuration")
-    
-    env_gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("LLM_API_KEY")
+
+    # Check st.secrets first (Streamlit Cloud), then fall back to .env / environment vars
+    _secrets_key = None
+    try:
+        for _sname in ["GEMINI_API_KEY", "LLM_API_KEY", "GOOGLE_API_KEY"]:
+            if _sname in st.secrets and st.secrets[_sname].strip():
+                _secrets_key = st.secrets[_sname].strip()
+                break
+    except Exception:
+        pass
+
+    env_gemini_key = (
+        _secrets_key
+        or os.getenv("GEMINI_API_KEY")
+        or os.getenv("GOOGLE_API_KEY")
+        or os.getenv("LLM_API_KEY")
+    )
+
     if env_gemini_key and env_gemini_key.strip():
-        st.sidebar.success("✅ `GEMINI_API_KEY` loaded from `.env`")
+        _source = "Streamlit Secrets" if _secrets_key else ".env"
+        st.sidebar.success(f"✅ `GEMINI_API_KEY` loaded from {_source}")
         user_api_key = st.sidebar.text_input(
             "Gemini API Key (Optional override):",
             type="password",
-            help="Key is loaded from your .env file. Enter a key here only if you wish to override it."
+            help=f"Key is loaded from {_source}. Enter a key here only if you wish to override it."
         )
     else:
-        st.sidebar.info("ℹ️ No `GEMINI_API_KEY` in `.env` (using offline templates).")
+        st.sidebar.warning("⚠️ No `GEMINI_API_KEY` found — using offline templates.")
         user_api_key = st.sidebar.text_input(
             "Gemini API Key:",
             type="password",
-            help="Enter your Gemini API key or add GEMINI_API_KEY=your_key in .env"
+            help="Enter your Gemini API key here, or add it in Streamlit Cloud → Settings → Secrets."
         )
 
     available_fonts = get_available_fonts()
