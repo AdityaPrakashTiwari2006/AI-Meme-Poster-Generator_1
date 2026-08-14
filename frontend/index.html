@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Meme & Poster Studio 🎨</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&family=Playfair+Display:wght@700&family=Impact&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar-panel">
+            <header class="app-header">
+                <h1>AI Meme & Poster Studio 🎨</h1>
+                <p class="subtitle">Design high-impact visual content with AI in seconds</p>
+            </header>
+
+            <div class="studio-tabs">
+                <button id="tab-poster" class="tab-btn active" onclick="switchTab('Poster')">📢 Poster Studio</button>
+                <button id="tab-meme" class="tab-btn" onclick="switchTab('Meme')">🎭 Meme Studio</button>
+            </div>
+
+            <section class="config-section">
+                <!-- Topic and AI Copywriting -->
+                <div class="control-group">
+                    <label for="input-topic">Topic / Subject</label>
+                    <input type="text" id="input-topic" value="AI Hackathon 2026">
+                </div>
+
+                <div class="control-group flex-row">
+                    <div class="half-width">
+                        <label for="select-tone">Tone</label>
+                        <select id="select-tone">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="half-width align-bottom">
+                        <button id="btn-generate-captions" class="btn-action full-width" onclick="generateAICaptions()">✨ AI Captions</button>
+                    </div>
+                </div>
+
+                <!-- Custom Template/Content Areas depending on Tab -->
+                <div id="poster-fields" class="tab-content active">
+                    <div class="control-group">
+                        <label for="poster-badge">Badge Text</label>
+                        <input type="text" id="poster-badge" value="FEATURED HACKATHON">
+                    </div>
+                    <div class="control-group">
+                        <label for="poster-title">Poster Title</label>
+                        <input type="text" id="poster-title" value="GLOBAL AI AGENTS HACKATHON">
+                    </div>
+                    <div class="control-group">
+                        <label for="poster-subtitle">Subtitle / Tagline</label>
+                        <textarea id="poster-subtitle" rows="2">Build autonomous multi-agent systems and win $50,000 in prizes.</textarea>
+                    </div>
+                    <div class="control-group">
+                        <label for="poster-caption">Description / Body Text</label>
+                        <textarea id="poster-caption" rows="2">Open to developers, designers, and AI creators worldwide.</textarea>
+                    </div>
+                    <div class="control-group">
+                        <label for="poster-datetime">Date & Time</label>
+                        <input type="text" id="poster-datetime" value="OCTOBER 24-26, 2026 • 6:00 PM EST">
+                    </div>
+                    <div class="control-group">
+                        <label for="poster-location">Location / CTA</label>
+                        <input type="text" id="poster-location" value="SAN FRANCISCO & VIRTUAL • REGISTER AT HACK.IO">
+                    </div>
+                    
+                    <div class="control-group flex-row">
+                        <div class="half-width">
+                            <label for="select-align">Alignment</label>
+                            <select id="select-align">
+                                <option value="center" selected>Center</option>
+                                <option value="left">Left</option>
+                            </select>
+                        </div>
+                        <div class="half-width flex-center">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="poster-border" checked> Show Border
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="meme-fields" class="tab-content">
+                    <div class="control-group">
+                        <label for="meme-top">Top Text</label>
+                        <input type="text" id="meme-top" value="Me explaining autonomous agents">
+                    </div>
+                    <div class="control-group">
+                        <label for="meme-bottom">Bottom Text</label>
+                        <input type="text" id="meme-bottom" value="After reading documentation for 5 minutes">
+                    </div>
+                    <div class="control-group flex-row">
+                        <div class="half-width">
+                            <label for="meme-font-size">Font Size (px)</label>
+                            <input type="number" id="meme-font-size" value="64" min="20" max="150">
+                        </div>
+                        <div class="half-width">
+                            <label for="meme-stroke-width">Stroke (px)</label>
+                            <input type="number" id="meme-stroke-width" value="5" min="0" max="20">
+                        </div>
+                    </div>
+                    <div class="control-group flex-row">
+                        <div class="half-width flex-center">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="meme-uppercase" checked> Uppercase
+                            </label>
+                        </div>
+                        <div class="half-width">
+                            <label for="meme-offset">Y-Offset (px)</label>
+                            <input type="number" id="meme-offset" value="0" min="-100" max="100">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="divider">
+
+                <!-- Canvas & Backdrop Global Settings -->
+                <h3>🎨 Canvas & Backdrop Settings</h3>
+                
+                <div class="control-group flex-row">
+                    <div class="half-width">
+                        <label for="select-aspect">Aspect Ratio</label>
+                        <select id="select-aspect" onchange="onAspectChanged()">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="half-width">
+                        <label for="select-font">Typography Font</label>
+                        <select id="select-font">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-group flex-row">
+                    <div class="half-width">
+                        <label for="input-margin">Safe Margin (px)</label>
+                        <input type="number" id="input-margin" value="80" min="20" max="150">
+                    </div>
+                    <div id="darken-field" class="half-width">
+                        <label for="input-darken">Dark Overlay Opacity</label>
+                        <input type="range" id="input-darken" min="0.0" max="1.0" step="0.05" value="0.60">
+                    </div>
+                </div>
+
+                <!-- Backdrop Source Tabs -->
+                <div class="backdrop-sources">
+                    <button class="source-btn active" onclick="switchSourceTab('gradient')">🌈 Gradient</button>
+                    <button class="source-btn" onclick="switchSourceTab('templates')">🖼️ Library</button>
+                    <button class="source-btn" onclick="switchSourceTab('ai-gen')">🪄 AI Imagen</button>
+                    <button class="source-btn" onclick="switchSourceTab('upload')">📁 Upload</button>
+                </div>
+
+                <div id="src-gradient" class="src-content active">
+                    <label>Gradient Theme Preset</label>
+                    <div id="gradient-palette-grid" class="theme-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div id="src-templates" class="src-content">
+                    <label>Select Backdrop Library Image</label>
+                    <div id="templates-grid" class="theme-grid scrollable-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div id="src-ai-gen" class="src-content">
+                    <label>Generate Background Image via AI</label>
+                    <div class="control-group flex-row">
+                        <div class="half-width">
+                            <label for="select-ai-style">Style</label>
+                            <select id="select-ai-style">
+                                <option value="Cinematic & Neon">Cinematic & Neon</option>
+                                <option value="Minimalist & Modern">Minimalist & Modern</option>
+                                <option value="Dark Tech & Cyberpunk">Dark Tech & Cyberpunk</option>
+                                <option value="Warm Sunset Ambient">Warm Sunset Ambient</option>
+                                <option value="Bold Abstract 3D">Bold Abstract 3D</option>
+                                <option value="Classic Meme Cartoon">Classic Meme Cartoon</option>
+                            </select>
+                        </div>
+                        <div class="half-width">
+                            <label for="select-ai-mood">Mood</label>
+                            <select id="select-ai-mood">
+                                <option value="Energetic">Energetic</option>
+                                <option value="Mysterious">Mysterious</option>
+                                <option value="Minimalist">Minimalist</option>
+                                <option value="Aesthetic">Aesthetic</option>
+                                <option value="Vibrant">Vibrant</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="input-ai-prompt">AI Image Prompt</label>
+                        <textarea id="input-ai-prompt" rows="3" placeholder="Enter background concept or click generate prompt..."></textarea>
+                    </div>
+                    <div class="control-group flex-row">
+                        <button class="btn-action half-width secondary-btn" onclick="autoCraftPrompt()">🪄 Auto-Craft Prompt</button>
+                        <button class="btn-action half-width" onclick="generateAIImage()">🚀 Generate AI Image</button>
+                    </div>
+                </div>
+
+                <div id="src-upload" class="src-content">
+                    <label>Upload Custom Background File</label>
+                    <div class="file-upload-box">
+                        <input type="file" id="file-bg-upload" accept="image/*" onchange="handleFileUpload(event)">
+                        <div class="upload-placeholder">
+                            <span>📁 Click to browse or drop image</span>
+                            <span id="upload-filename" class="filename-text"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Key Configuration Section -->
+                <div class="api-key-config">
+                    <label for="input-api-key">Gemini API Key (Optional override)</label>
+                    <input type="password" id="input-api-key" placeholder="Enter Gemini API key...">
+                    <small>Uses GEMINI_API_KEY from .env / Streamlit secrets by default.</small>
+                </div>
+            </section>
+        </aside>
+
+        <!-- Preview Area -->
+        <main class="preview-panel">
+            <div class="preview-container">
+                <div class="preview-header">
+                    <h2>Live Canvas Preview</h2>
+                    <span id="canvas-size-badge" class="badge">1080 x 1080</span>
+                </div>
+                <div class="canvas-wrapper">
+                    <!-- Composed Image Display -->
+                    <img id="composed-canvas" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Composed Studio Design">
+                </div>
+                <div class="actions-panel">
+                    <button class="btn-action generate-btn" onclick="updateComposition()">🎨 Generate Design</button>
+                    <button id="btn-download" class="btn-action download-btn" onclick="downloadPNG()" disabled>⬇️ Download PNG</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- AI Captions Modal Dialog -->
+    <div id="captions-modal" class="modal-overlay">
+        <div class="modal-card">
+            <header class="modal-header">
+                <h3>✨ Select AI Generated Captions</h3>
+                <button class="close-modal-btn" onclick="closeModal()">×</button>
+            </header>
+            <div id="modal-notice" class="modal-notice-banner" style="display:none;"></div>
+            <div id="captions-list-container" class="suggestions-list">
+                <!-- Suggestions rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
