@@ -230,12 +230,14 @@ def main():
 
         if gen_captions_btn:
             with st.spinner("Generating 5 AI caption suggestions..."):
+                # Use manually entered key first, then the resolved key from secrets/.env
+                active_key = user_api_key.strip() if user_api_key and user_api_key.strip() else env_gemini_key
                 caps, notice = generate_captions_flexible(
                     topic=st.session_state["topic"],
                     audience="General Audience / Tech Enthusiasts",
                     tone=tone_val,
                     event_type=content_type,
-                    api_key=user_api_key if user_api_key.strip() else None
+                    api_key=active_key
                 )
                 st.session_state["captions_cache"] = caps
                 st.session_state["caption_notice"] = notice
