@@ -188,7 +188,10 @@ def compose_meme(
     draw = ImageDraw.Draw(canvas)
     w, h = canvas.size
     max_w = w - (safe_margin * 2)
-    max_h_each = (h // 3)
+    # Give each text zone enough height to comfortably fit the chosen font size
+    # (at least 3 lines worth at the chosen size), instead of hard-capping at h//3
+    line_h_estimate = int(font_size * 1.4)
+    max_h_each = max(h // 3, line_h_estimate * 3)
 
     text_rgb = hex_to_rgb(text_color_hex)
     stroke_rgb = hex_to_rgb(stroke_color_hex)
