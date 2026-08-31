@@ -264,6 +264,7 @@ def compose_poster(
     target_size: tuple[int, int] = (1080, 1350),
     safe_margin: int = 80,
     font_name: str = "Montserrat Bold",
+    font_size: int = 68,
     title_color_hex: str = "#FFFFFF",
     subtitle_color_hex: str = "#F0F0F0",
     caption_color_hex: str = "#CCCCCC",
@@ -369,17 +370,20 @@ def compose_poster(
             width=3
         )
 
+    # Calculate dynamic font scaling multiplier from font_size slider (default 68 = 1.0x)
+    scale = max(0.40, font_size / 68.0)
+
     # 5. Header / Category Badge Pill
     current_y = safe_top + int(h * 0.015)
 
     if badge_text and badge_text.strip():
-        badge_font = load_font(font_name, int(w * 0.030))
+        badge_font = load_font(font_name, int(w * 0.030 * scale))
         badge_str = badge_text.strip().upper()
         b_box = draw.textbbox((0, 0), badge_str, font=badge_font)
         bw = b_box[2] - b_box[0]
         bh = b_box[3] - b_box[1]
         
-        pad_x, pad_y = 24, 10
+        pad_x, pad_y = int(24 * scale), int(10 * scale)
         pill_w = bw + pad_x * 2
         pill_h = bh + pad_y * 2
 
@@ -391,7 +395,7 @@ def compose_poster(
         # Pill background
         draw.rounded_rectangle(
             [(bx, current_y), (bx + pill_w, current_y + pill_h)],
-            radius=14,
+            radius=max(6, int(14 * scale)),
             fill=(*accent_rgb, 240)
         )
         # Badge Text
@@ -401,12 +405,12 @@ def compose_poster(
     # 6. Main Event / Poster Title
     if title and title.strip():
         title_str = title.strip().upper()
-        max_title_h = int(h * 0.26)
+        max_title_h = int(h * 0.32 * max(1.0, scale))
         title_font, title_lines = auto_fit_font(
             title_str, font_name, content_w, max_title_h,
-            initial_size=int(w * 0.090), min_size=32, draw=draw
+            initial_size=int(w * 0.090 * scale), min_size=max(18, int(28 * scale)), draw=draw
         )
-        t_spacing = max(8, int(title_font.size * 0.18)) if hasattr(title_font, "size") else 14
+        t_spacing = max(6, int(title_font.size * 0.18)) if hasattr(title_font, "size") else 14
 
         for line in title_lines:
             bbox = draw.textbbox((0, 0), line, font=title_font, stroke_width=3)
@@ -419,20 +423,20 @@ def compose_poster(
         current_y += int(h * 0.015)
 
     # 7. Accent Divider Bar
-    bar_w = int(w * 0.18)
+    bar_w = int(w * 0.18 * scale)
     bar_x = (w - bar_w) // 2 if layout_align == "center" else safe_left
-    draw.line([(bar_x, current_y), (bar_x + bar_w, current_y)], fill=(*accent_rgb, 245), width=5)
+    draw.line([(bar_x, current_y), (bar_x + bar_w, current_y)], fill=(*accent_rgb, 245), width=max(2, int(5 * scale)))
     current_y += int(h * 0.025)
 
     # 8. Subtitle / Tagline
     if subtitle and subtitle.strip():
         sub_str = subtitle.strip()
-        max_sub_h = int(h * 0.15)
+        max_sub_h = int(h * 0.18 * max(1.0, scale))
         sub_font, sub_lines = auto_fit_font(
             sub_str, font_name or "Segoe UI Bold", content_w, max_sub_h,
-            initial_size=int(w * 0.042), min_size=22, draw=draw
+            initial_size=int(w * 0.042 * scale), min_size=max(14, int(20 * scale)), draw=draw
         )
-        s_spacing = max(6, int(sub_font.size * 0.20)) if hasattr(sub_font, "size") else 10
+        s_spacing = max(4, int(sub_font.size * 0.20)) if hasattr(sub_font, "size") else 10
 
         for line in sub_lines:
             bbox = draw.textbbox((0, 0), line, font=sub_font, stroke_width=2)
@@ -447,10 +451,10 @@ def compose_poster(
     # 9. Additional Caption / Body Description
     if caption and caption.strip():
         cap_str = caption.strip()
-        max_cap_h = int(h * 0.12)
+        max_cap_h = int(h * 0.15 * max(1.0, scale))
         cap_font, cap_lines = auto_fit_font(
             cap_str, font_name or "Segoe UI Bold", content_w, max_cap_h,
-            initial_size=int(w * 0.034), min_size=18, draw=draw
+            initial_size=int(w * 0.034 * scale), min_size=max(12, int(16 * scale)), draw=draw
         )
         c_spacing = max(4, int(cap_font.size * 0.20)) if hasattr(cap_font, "size") else 8
 
@@ -464,8 +468,8 @@ def compose_poster(
 
     # 10. Footer Event Information (Date/Time & Location/CTA)
     # Anchor to safe bottom margin
-    footer_font = load_font(font_name, int(w * 0.035))
-    cta_font = load_font(font_name or "Segoe UI Bold", int(w * 0.030))
+    footer_font = load_font(font_name, int(w * 0.035 * scale))
+    cta_font = load_font(font_name or "Segoe UI Bold", int(w * 0.030 * scale))
 
     dt_lines = wrap_text(date_time.strip(), footer_font, content_w, draw) if date_time.strip() else []
     cta_lines = wrap_text(location_cta.strip(), cta_font, content_w, draw) if location_cta.strip() else []
