@@ -283,6 +283,19 @@ def compose_poster(
     - Body Caption / Description
     - Footer Date/Time and Location/CTA chips
     """
+    # Clean up Unicode bullet symbols that render as tofu boxes in certain fonts
+    def sanitize_special_chars(s: str) -> str:
+        if not s:
+            return ""
+        return s.replace("•", " | ").replace("·", " | ").replace("—", " - ").replace("–", " - ").replace("⯐", " | ")
+
+    title = sanitize_special_chars(title)
+    subtitle = sanitize_special_chars(subtitle)
+    caption = sanitize_special_chars(caption)
+    badge_text = sanitize_special_chars(badge_text)
+    date_time = sanitize_special_chars(date_time)
+    location_cta = sanitize_special_chars(location_cta)
+
     target_w, target_h = target_size
 
     # 1. Base Image or Procedural Gradient
@@ -299,20 +312,40 @@ def compose_poster(
     canvas = canvas.convert("RGBA")
     w, h = canvas.size
 
-    # 2. Dark Scrim Gradient Overlay for Text Readability
+    # 2. Dual-Zone Dark Scrim Gradient Overlay for Superior Text Contrast
+    # Strong dark scrim at top (for title/subtitle) and bottom (for footer)
     overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     overlay_draw = ImageDraw.Draw(overlay)
-    alpha_base = int(255 * overlay_opacity)
+    alpha_base = int(255 * max(0.40, overlay_opacity))
 
     for y in range(h):
-        progress = y / h
-        # Smooth curve: darker at top/bottom, strong legibility everywhere
-        alpha = int(alpha_base * (0.65 + 0.45 * progress))
-        alpha = min(245, max(30, alpha))
-        overlay_draw.line([(0, y), (w, y)], fill=(8, 10, 16, alpha))
+        rel_y = y / h
+        if rel_y < 0.45:
+            # Top gradient (darker near header)
+            factor = 1.0 - (rel_y / 0.45) * 0.45
+        elif rel_y > 0.70:
+            # Bottom gradient (darker near footer)
+            factor = 0.55 + ((rel_y - 0.70) / 0.30) * 0.45
+        else:
+            # Mid section stays transparent to show background artwork
+            factor = 0.40
+        alpha = int(alpha_base * factor)
+        alpha = min(235, max(40, alpha))
+        overlay_draw.line([(0, y), (w, y)], fill=(6, 8, 14, alpha))
 
     canvas = Image.alpha_composite(canvas, overlay)
     draw = ImageDraw.Draw(canvas)
+
+    # Helper to draw text with dark outline shadow for 100% readability over any background
+    def draw_contrast_text(d, pos, text_str, font_obj, fill_color, stroke_color=(0, 0, 0), stroke_w=3):
+        d.text(
+            pos,
+            text_str,
+            font=font_obj,
+            fill=fill_color,
+            stroke_width=stroke_w,
+            stroke_fill=stroke_color
+        )
 
     # Convert color codes
     title_rgb = hex_to_rgb(title_color_hex)
@@ -332,21 +365,21 @@ def compose_poster(
         border_offset = max(20, safe_margin // 2)
         draw.rectangle(
             [(border_offset, border_offset), (w - border_offset, h - border_offset)],
-            outline=(*accent_rgb, 100),
-            width=2
+            outline=(*accent_rgb, 140),
+            width=3
         )
 
     # 5. Header / Category Badge Pill
-    current_y = safe_top + int(h * 0.02)
+    current_y = safe_top + int(h * 0.015)
 
     if badge_text and badge_text.strip():
-        badge_font = load_font(font_name, int(w * 0.026))
+        badge_font = load_font(font_name, int(w * 0.030))
         badge_str = badge_text.strip().upper()
         b_box = draw.textbbox((0, 0), badge_str, font=badge_font)
         bw = b_box[2] - b_box[0]
         bh = b_box[3] - b_box[1]
         
-        pad_x, pad_y = 20, 8
+        pad_x, pad_y = 24, 10
         pill_w = bw + pad_x * 2
         pill_h = bh + pad_y * 2
 
@@ -358,112 +391,112 @@ def compose_poster(
         # Pill background
         draw.rounded_rectangle(
             [(bx, current_y), (bx + pill_w, current_y + pill_h)],
-            radius=12,
-            fill=(*accent_rgb, 230)
+            radius=14,
+            fill=(*accent_rgb, 240)
         )
         # Badge Text
-        draw.text((bx + pad_x, current_y + pad_y), badge_str, font=badge_font, fill=(10, 12, 18, 255))
-        current_y += pill_h + int(h * 0.035)
+        draw.text((bx + pad_x, current_y + pad_y), badge_str, font=badge_font, fill=(8, 10, 16, 255))
+        current_y += pill_h + int(h * 0.030)
 
     # 6. Main Event / Poster Title
     if title and title.strip():
         title_str = title.strip().upper()
-        max_title_h = int(h * 0.28)
+        max_title_h = int(h * 0.26)
         title_font, title_lines = auto_fit_font(
             title_str, font_name, content_w, max_title_h,
-            initial_size=int(w * 0.082), min_size=24, draw=draw
+            initial_size=int(w * 0.090), min_size=32, draw=draw
         )
-        t_spacing = int(title_font.size * 0.15) if hasattr(title_font, "size") else 12
+        t_spacing = max(8, int(title_font.size * 0.18)) if hasattr(title_font, "size") else 14
 
         for line in title_lines:
-            bbox = draw.textbbox((0, 0), line, font=title_font)
+            bbox = draw.textbbox((0, 0), line, font=title_font, stroke_width=3)
             lw = bbox[2] - bbox[0]
             lh = bbox[3] - bbox[1]
             lx = (w - lw) // 2 if layout_align == "center" else safe_left
-            draw.text((lx, current_y), line, font=title_font, fill=(*title_rgb, 255))
+            draw_contrast_text(draw, (lx, current_y), line, title_font, (*title_rgb, 255), stroke_w=3)
             current_y += lh + t_spacing
 
         current_y += int(h * 0.015)
 
     # 7. Accent Divider Bar
-    bar_w = int(w * 0.16)
+    bar_w = int(w * 0.18)
     bar_x = (w - bar_w) // 2 if layout_align == "center" else safe_left
-    draw.line([(bar_x, current_y), (bar_x + bar_w, current_y)], fill=(*accent_rgb, 240), width=4)
-    current_y += int(h * 0.03)
+    draw.line([(bar_x, current_y), (bar_x + bar_w, current_y)], fill=(*accent_rgb, 245), width=5)
+    current_y += int(h * 0.025)
 
     # 8. Subtitle / Tagline
     if subtitle and subtitle.strip():
         sub_str = subtitle.strip()
         max_sub_h = int(h * 0.15)
         sub_font, sub_lines = auto_fit_font(
-            sub_str, "Segoe UI Bold", content_w, max_sub_h,
-            initial_size=int(w * 0.036), min_size=18, draw=draw
+            sub_str, font_name or "Segoe UI Bold", content_w, max_sub_h,
+            initial_size=int(w * 0.042), min_size=22, draw=draw
         )
-        s_spacing = int(sub_font.size * 0.2) if hasattr(sub_font, "size") else 8
+        s_spacing = max(6, int(sub_font.size * 0.20)) if hasattr(sub_font, "size") else 10
 
         for line in sub_lines:
-            bbox = draw.textbbox((0, 0), line, font=sub_font)
+            bbox = draw.textbbox((0, 0), line, font=sub_font, stroke_width=2)
             lw = bbox[2] - bbox[0]
             lh = bbox[3] - bbox[1]
             lx = (w - lw) // 2 if layout_align == "center" else safe_left
-            draw.text((lx, current_y), line, font=sub_font, fill=(*sub_rgb, 245))
+            draw_contrast_text(draw, (lx, current_y), line, sub_font, (*sub_rgb, 250), stroke_w=2)
             current_y += lh + s_spacing
 
-        current_y += int(h * 0.02)
+        current_y += int(h * 0.018)
 
     # 9. Additional Caption / Body Description
     if caption and caption.strip():
         cap_str = caption.strip()
         max_cap_h = int(h * 0.12)
         cap_font, cap_lines = auto_fit_font(
-            cap_str, "Segoe UI Bold", content_w, max_cap_h,
-            initial_size=int(w * 0.028), min_size=15, draw=draw
+            cap_str, font_name or "Segoe UI Bold", content_w, max_cap_h,
+            initial_size=int(w * 0.034), min_size=18, draw=draw
         )
-        c_spacing = int(cap_font.size * 0.2) if hasattr(cap_font, "size") else 6
+        c_spacing = max(4, int(cap_font.size * 0.20)) if hasattr(cap_font, "size") else 8
 
         for line in cap_lines:
-            bbox = draw.textbbox((0, 0), line, font=cap_font)
+            bbox = draw.textbbox((0, 0), line, font=cap_font, stroke_width=2)
             lw = bbox[2] - bbox[0]
             lh = bbox[3] - bbox[1]
             lx = (w - lw) // 2 if layout_align == "center" else safe_left
-            draw.text((lx, current_y), line, font=cap_font, fill=(*cap_rgb, 220))
+            draw_contrast_text(draw, (lx, current_y), line, cap_font, (*cap_rgb, 230), stroke_w=2)
             current_y += lh + c_spacing
 
     # 10. Footer Event Information (Date/Time & Location/CTA)
     # Anchor to safe bottom margin
-    footer_font = load_font(font_name, int(w * 0.032))
-    cta_font = load_font("Segoe UI Bold", int(w * 0.028))
+    footer_font = load_font(font_name, int(w * 0.035))
+    cta_font = load_font(font_name or "Segoe UI Bold", int(w * 0.030))
 
     dt_lines = wrap_text(date_time.strip(), footer_font, content_w, draw) if date_time.strip() else []
     cta_lines = wrap_text(location_cta.strip(), cta_font, content_w, draw) if location_cta.strip() else []
 
-    dt_w, dt_h = calculate_text_block_dimensions(dt_lines, footer_font, draw, line_spacing=6)
-    cta_w, cta_h = calculate_text_block_dimensions(cta_lines, cta_font, draw, line_spacing=6)
+    dt_w, dt_h = calculate_text_block_dimensions(dt_lines, footer_font, draw, line_spacing=8)
+    cta_w, cta_h = calculate_text_block_dimensions(cta_lines, cta_font, draw, line_spacing=8)
 
-    total_footer_h = dt_h + (16 if dt_lines and cta_lines else 0) + cta_h
+    total_footer_h = dt_h + (18 if dt_lines and cta_lines else 0) + cta_h
     start_footer_y = safe_bottom - total_footer_h
 
     # Render Date/Time
     curr_foot_y = start_footer_y
     for line in dt_lines:
-        bbox = draw.textbbox((0, 0), line, font=footer_font)
+        bbox = draw.textbbox((0, 0), line, font=footer_font, stroke_width=2)
         lw = bbox[2] - bbox[0]
         lh = bbox[3] - bbox[1]
         lx = (w - lw) // 2 if layout_align == "center" else safe_left
-        draw.text((lx, curr_foot_y), line, font=footer_font, fill=(*accent_rgb, 255))
-        curr_foot_y += lh + 6
+        draw_contrast_text(draw, (lx, curr_foot_y), line, footer_font, (*accent_rgb, 255), stroke_w=2)
+        curr_foot_y += lh + 8
 
     if dt_lines and cta_lines:
         curr_foot_y += 10
 
     # Render Location / CTA
     for line in cta_lines:
-        bbox = draw.textbbox((0, 0), line, font=cta_font)
+        bbox = draw.textbbox((0, 0), line, font=cta_font, stroke_width=2)
         lw = bbox[2] - bbox[0]
         lh = bbox[3] - bbox[1]
         lx = (w - lw) // 2 if layout_align == "center" else safe_left
-        draw.text((lx, curr_foot_y), line, font=cta_font, fill=(*title_rgb, 230))
-        curr_foot_y += lh + 6
+        draw_contrast_text(draw, (lx, curr_foot_y), line, cta_font, (*title_rgb, 240), stroke_w=2)
+        curr_foot_y += lh + 8
 
     return canvas.convert("RGB")
 
