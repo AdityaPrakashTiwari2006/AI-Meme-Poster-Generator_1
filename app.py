@@ -383,12 +383,12 @@ def main():
             with c_prov:
                 chosen_provider = st.selectbox(
                     "Image Provider:",
-                    ["auto", "pollinations", "gemini", "openai"],
+                    ["pollinations", "auto", "gemini", "openai"],
                     format_func=lambda p: {
-                        "auto": "⚡ Auto (Gemini / OpenAI / Pollinations)",
-                        "pollinations": "🌐 Pollinations.ai (Instant Free)",
-                        "gemini": "✨ Google Imagen (GEMINI_API_KEY)",
-                        "openai": "🎨 OpenAI DALL-E (OPENAI_API_KEY)"
+                        "pollinations": "🌐 Pollinations.ai (Instant Free • Recommended)",
+                        "auto": "⚡ Auto (Fallback Chain)",
+                        "gemini": "✨ Google Imagen (Requires Imagen Access)",
+                        "openai": "🎨 OpenAI DALL-E (Requires OPENAI_API_KEY)"
                     }.get(p, p),
                     index=0
                 )
