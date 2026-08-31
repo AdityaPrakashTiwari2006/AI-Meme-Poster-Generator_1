@@ -196,43 +196,59 @@ def compose_meme(
     text_rgb = hex_to_rgb(text_color_hex)
     stroke_rgb = hex_to_rgb(stroke_color_hex)
 
-    # Render Top Text
-    if top_text.strip():
-        txt = top_text.upper() if uppercase else top_text
-        font, lines = auto_fit_font(txt, font_name, max_w, max_h_each, initial_size=font_size, draw=draw)
-        line_spacing = int(font.size * 0.2) if hasattr(font, "size") else 10
+    def draw_text_block_with_bar(txt, y_top, anchor="top", current_draw=None):
+        """Renders a text block with a dark background bar for readability."""
+        d = current_draw or draw
+        font, lines = auto_fit_font(txt, font_name, max_w, max_h_each, initial_size=font_size, draw=d)
+        if not lines:
+            return d
+        line_spacing = max(4, int(font.size * 0.2)) if hasattr(font, "size") else 10
 
-        curr_y = safe_margin + vertical_offset
+        _, block_h = calculate_text_block_dimensions(lines, font, d, line_spacing)
+        padding = max(10, int(font_size * 0.18))
+        bar_h = block_h + padding * 2
+
+        if anchor == "top":
+            bar_y0 = y_top
+            text_start_y = bar_y0 + padding
+        else:
+            bar_y0 = y_top - bar_h
+            text_start_y = bar_y0 + padding
+
+        # Clamp bar within canvas bounds
+        bar_y0 = max(0, min(bar_y0, h - bar_h))
+
+        # Draw semi-transparent dark bar across full width
+        bar_img = Image.new("RGBA", (w, bar_h), (0, 0, 0, 178))  # ~70% opacity
+        canvas.paste(bar_img, (0, bar_y0), bar_img)
+
+        # Recreate draw after canvas mutation
+        new_draw = ImageDraw.Draw(canvas)
+
+        curr_y = text_start_y
         for line in lines:
-            bbox = draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
+            bbox = new_draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
             line_w = bbox[2] - bbox[0]
             line_h = bbox[3] - bbox[1]
             pos_x = (w - line_w) // 2
             draw_text_with_outline(
-                draw, (pos_x, curr_y), line, font,
+                new_draw, (pos_x, curr_y), line, font,
                 text_color=text_rgb, stroke_color=stroke_rgb, stroke_width=stroke_width
             )
             curr_y += line_h + line_spacing
+
+        return new_draw
+
+    # Render Top Text
+    if top_text.strip():
+        txt = top_text.upper() if uppercase else top_text
+        draw_text_block_with_bar(txt, y_top=safe_margin + vertical_offset, anchor="top")
 
     # Render Bottom Text
     if bottom_text.strip():
         txt = bottom_text.upper() if uppercase else bottom_text
-        font, lines = auto_fit_font(txt, font_name, max_w, max_h_each, initial_size=font_size, draw=draw)
-        line_spacing = int(font.size * 0.2) if hasattr(font, "size") else 10
-
-        _, total_h = calculate_text_block_dimensions(lines, font, draw, line_spacing)
-        curr_y = h - safe_margin - total_h + vertical_offset
-
-        for line in lines:
-            bbox = draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
-            line_w = bbox[2] - bbox[0]
-            line_h = bbox[3] - bbox[1]
-            pos_x = (w - line_w) // 2
-            draw_text_with_outline(
-                draw, (pos_x, curr_y), line, font,
-                text_color=text_rgb, stroke_color=stroke_rgb, stroke_width=stroke_width
-            )
-            curr_y += line_h + line_spacing
+        bar_bottom_y = h - safe_margin + vertical_offset
+        draw_text_block_with_bar(txt, y_top=bar_bottom_y, anchor="bottom")
 
     return canvas.convert("RGB")
 
