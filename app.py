@@ -522,6 +522,7 @@ def main():
                     location_cta=st.session_state["location"],
                     target_size=target_dimensions,
                     font_name=resolved_font,
+                    font_size=st.session_state["font_sz"],
                     title_color_hex=st.session_state["title_col"],
                     subtitle_color_hex=st.session_state["sub_col"],
                     accent_color_hex=st.session_state["accent_col"],
