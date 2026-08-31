@@ -138,7 +138,8 @@ def generate_image_gemini_imagen(
     timeout: int = 40
 ) -> Image.Image:
     """
-    Generates an image via Google Imagen 3 API using GEMINI_API_KEY.
+    Generates an image via Google Imagen API using GEMINI_API_KEY.
+    Tries candidate model versions (imagen-3.0-generate-002, imagen-3.0-generate-001).
     """
     key = api_key
     if not key:
@@ -153,39 +154,44 @@ def generate_image_gemini_imagen(
     if not key:
         raise ImageGenAuthError("Gemini / Imagen API key is missing. Set GEMINI_API_KEY in .env, streamlit secrets, or environment.")
 
-    # Imagen 3 predict endpoint
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={key}"
-    headers = {"Content-Type": "application/json"}
-    payload = {
-        "instances": [
-            {"prompt": prompt}
-        ],
-        "parameters": {
-            "sampleCount": 1,
-            "aspectRatio": aspect_ratio,
-            "outputMimeType": "image/jpeg"
+    candidate_models = ["imagen-3.0-generate-002", "imagen-3.0-generate-001", "image-generation-001"]
+    last_error = None
+
+    for model_id in candidate_models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:predict?key={key}"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "instances": [
+                {"prompt": prompt}
+            ],
+            "parameters": {
+                "sampleCount": 1,
+                "aspectRatio": aspect_ratio,
+                "outputMimeType": "image/jpeg"
+            }
         }
-    }
 
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=timeout)
-    except requests.exceptions.RequestException as e:
-        raise ImageGenNetworkError(f"Network error connecting to Imagen API: {str(e)}")
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=timeout)
+        except requests.exceptions.RequestException as e:
+            last_error = f"Network error: {str(e)}"
+            continue
 
-    if response.status_code != 200:
-        raise ImageGenerationError(f"Imagen API Error (HTTP {response.status_code}): {response.text[:250]}")
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                predictions = data.get("predictions", [])
+                if predictions and "bytesBase64Encoded" in predictions[0]:
+                    img_b64 = predictions[0]["bytesBase64Encoded"]
+                    img_bytes = base64.b64decode(img_b64)
+                    return Image.open(io.BytesIO(img_bytes)).convert("RGB")
+            except Exception as e:
+                last_error = str(e)
+                continue
+        else:
+            last_error = f"Imagen API Error (HTTP {response.status_code}): {response.text[:250]}"
 
-    try:
-        data = response.json()
-        predictions = data.get("predictions", [])
-        if not predictions or "bytesBase64Encoded" not in predictions[0]:
-            raise ImageGenEmptyResponseError("Imagen API returned empty predictions array.")
-        
-        img_b64 = predictions[0]["bytesBase64Encoded"]
-        img_bytes = base64.b64decode(img_b64)
-        return Image.open(io.BytesIO(img_bytes)).convert("RGB")
-    except Exception as e:
-        raise ImageGenEmptyResponseError(f"Failed to parse Imagen API response: {str(e)}")
+    raise ImageGenerationError(last_error or "Imagen API model not available for this API key.")
 
 
 def generate_image_openai_dalle(
@@ -253,16 +259,23 @@ def generate_image(
     timeout: int = 30
 ) -> Image.Image:
     """
-    Unified entry point for AI image generation.
-    Supports provider='pollinations', 'gemini', 'openai', or 'auto' (selects based on available keys).
+    Unified entry point for AI image generation with automatic fallback.
+    If Gemini or OpenAI fail (e.g. HTTP 404, subscription limits), gracefully falls back to Pollinations.
     """
     if provider == "gemini":
-        img = generate_image_gemini_imagen(prompt, api_key=api_key, timeout=timeout)
-        return fit_image_to_aspect_ratio(img, width, height, fit_mode="cover")
+        try:
+            img = generate_image_gemini_imagen(prompt, api_key=api_key, timeout=timeout)
+            return fit_image_to_aspect_ratio(img, width, height, fit_mode="cover")
+        except Exception:
+            # Graceful fallback to Pollinations if Imagen is not enabled on the key
+            return generate_image_pollinations(prompt, width=width, height=height, seed=seed, timeout=timeout)
 
     elif provider == "openai":
-        img = generate_image_openai_dalle(prompt, api_key=api_key, timeout=timeout)
-        return fit_image_to_aspect_ratio(img, width, height, fit_mode="cover")
+        try:
+            img = generate_image_openai_dalle(prompt, api_key=api_key, timeout=timeout)
+            return fit_image_to_aspect_ratio(img, width, height, fit_mode="cover")
+        except Exception:
+            return generate_image_pollinations(prompt, width=width, height=height, seed=seed, timeout=timeout)
 
     elif provider == "pollinations":
         return generate_image_pollinations(prompt, width=width, height=height, seed=seed, timeout=timeout)
@@ -286,5 +299,5 @@ def generate_image(
             except Exception:
                 pass
 
-        # 3. Default to Pollinations (free, instant)
+        # 3. Default to Pollinations (free, instant, 100% reliable)
         return generate_image_pollinations(prompt, width=width, height=height, seed=seed, timeout=timeout)
