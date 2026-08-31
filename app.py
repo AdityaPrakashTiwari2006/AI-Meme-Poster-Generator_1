@@ -165,6 +165,33 @@ def main():
         st.session_state["rendered_poster"] = None
     if "current_image" not in st.session_state:
         st.session_state["current_image"] = None
+    # Typography & styling defaults (persist even when expander is collapsed)
+    if "font_name" not in st.session_state:
+        st.session_state["font_name"] = None  # resolved after font list loads
+    if "font_sz" not in st.session_state:
+        st.session_state["font_sz"] = 68
+    if "meme_text_color" not in st.session_state:
+        st.session_state["meme_text_color"] = "#FFFFFF"
+    if "meme_stroke_color" not in st.session_state:
+        st.session_state["meme_stroke_color"] = "#000000"
+    if "meme_stroke_w" not in st.session_state:
+        st.session_state["meme_stroke_w"] = 5
+    if "uppercase_mode" not in st.session_state:
+        st.session_state["uppercase_mode"] = True
+    if "v_offset" not in st.session_state:
+        st.session_state["v_offset"] = 0
+    if "title_col" not in st.session_state:
+        st.session_state["title_col"] = "#FFFFFF"
+    if "sub_col" not in st.session_state:
+        st.session_state["sub_col"] = "#F0F0F0"
+    if "accent_col" not in st.session_state:
+        st.session_state["accent_col"] = "#00F0FF"
+    if "overlay_val" not in st.session_state:
+        st.session_state["overlay_val"] = 0.60
+    if "show_border_val" not in st.session_state:
+        st.session_state["show_border_val"] = True
+    if "align_val" not in st.session_state:
+        st.session_state["align_val"] = "center"
 
     # Dual Column Interface
     col_form, col_view = st.columns([1.15, 1.0], gap="large")
@@ -417,37 +444,53 @@ def main():
         with st.expander("🎛️ Advanced Typography & Styling Options", expanded=False):
             st_f1, st_f2 = st.columns(2)
             with st_f1:
-                selected_font = st.selectbox(
-                    "Font Family:",
-                    font_names,
-                    index=font_names.index("Impact") if (content_type == "Meme" and "Impact" in font_names) else 0
-                )
+                default_font_idx = font_names.index("Impact") if (content_type == "Meme" and "Impact" in font_names) else 0
+                selected_font = st.selectbox("Font Family:", font_names, index=default_font_idx)
+                st.session_state["font_name"] = selected_font
             with st_f2:
-                font_sz = st.slider("Font Size Scale:", min_value=24, max_value=120, value=68, step=2)
+                st.session_state["font_sz"] = st.slider(
+                    "Font Size Scale:", min_value=24, max_value=120,
+                    value=st.session_state["font_sz"], step=2
+                )
 
             if content_type == "Meme":
                 m_c1, m_c2, m_c3 = st.columns(3)
                 with m_c1:
-                    meme_text_color = st.color_picker("Text Color:", "#FFFFFF")
+                    st.session_state["meme_text_color"] = st.color_picker(
+                        "Text Color:", value=st.session_state["meme_text_color"])
                 with m_c2:
-                    meme_stroke_color = st.color_picker("Stroke Color:", "#000000")
+                    st.session_state["meme_stroke_color"] = st.color_picker(
+                        "Stroke Color:", value=st.session_state["meme_stroke_color"])
                 with m_c3:
-                    meme_stroke_w = st.slider("Stroke Width:", 0, 12, 5)
-
-                uppercase_mode = st.checkbox("Uppercase Text", value=True)
-                v_offset = st.slider("Vertical Offset (px):", -100, 100, 0, step=5)
+                    st.session_state["meme_stroke_w"] = st.slider(
+                        "Stroke Width:", 0, 12, value=st.session_state["meme_stroke_w"])
+                st.session_state["uppercase_mode"] = st.checkbox(
+                    "Uppercase Text", value=st.session_state["uppercase_mode"])
+                st.session_state["v_offset"] = st.slider(
+                    "Vertical Offset (px):", -100, 100, value=st.session_state["v_offset"], step=5)
             else:
                 p_c1, p_c2, p_c3 = st.columns(3)
                 with p_c1:
-                    title_col = st.color_picker("Title Color:", "#FFFFFF")
+                    st.session_state["title_col"] = st.color_picker(
+                        "Title Color:", value=st.session_state["title_col"])
                 with p_c2:
-                    sub_col = st.color_picker("Subtitle Color:", "#F0F0F0")
+                    st.session_state["sub_col"] = st.color_picker(
+                        "Subtitle Color:", value=st.session_state["sub_col"])
                 with p_c3:
-                    accent_col = st.color_picker("Accent Color:", "#00F0FF")
+                    st.session_state["accent_col"] = st.color_picker(
+                        "Accent Color:", value=st.session_state["accent_col"])
+                st.session_state["overlay_val"] = st.slider(
+                    "Dark Scrim Overlay:", 0.0, 0.95,
+                    value=st.session_state["overlay_val"], step=0.05)
+                st.session_state["show_border_val"] = st.checkbox(
+                    "Framing Border", value=st.session_state["show_border_val"])
+                align_options = ["center", "left"]
+                align_idx = align_options.index(st.session_state["align_val"]) if st.session_state["align_val"] in align_options else 0
+                st.session_state["align_val"] = st.selectbox(
+                    "Text Alignment:", align_options, index=align_idx)
 
-                overlay_val = st.slider("Dark Scrim Overlay:", 0.0, 0.95, 0.60, step=0.05)
-                show_border_val = st.checkbox("Framing Border", value=True)
-                align_val = st.selectbox("Text Alignment:", ["center", "left"], index=0)
+        # Resolve font name (after font list is available)
+        resolved_font = st.session_state.get("font_name") or (font_names[0] if font_names else None)
 
         # 6. Generate Poster / Meme Button
         st.markdown("---")
@@ -460,13 +503,13 @@ def main():
                     top_text=st.session_state["meme_top_text"],
                     bottom_text=st.session_state["meme_bottom_text"],
                     target_size=target_dimensions,
-                    font_name=selected_font,
-                    text_color_hex=meme_text_color if 'meme_text_color' in locals() else "#FFFFFF",
-                    stroke_color_hex=meme_stroke_color if 'meme_stroke_color' in locals() else "#000000",
-                    stroke_width=meme_stroke_w if 'meme_stroke_w' in locals() else 5,
-                    font_size=font_sz,
-                    uppercase=uppercase_mode if 'uppercase_mode' in locals() else True,
-                    vertical_offset=v_offset if 'v_offset' in locals() else 0
+                    font_name=resolved_font,
+                    text_color_hex=st.session_state["meme_text_color"],
+                    stroke_color_hex=st.session_state["meme_stroke_color"],
+                    stroke_width=st.session_state["meme_stroke_w"],
+                    font_size=st.session_state["font_sz"],
+                    uppercase=st.session_state["uppercase_mode"],
+                    vertical_offset=st.session_state["v_offset"]
                 )
             else:
                 st.session_state["rendered_poster"] = compose_poster(
@@ -478,13 +521,13 @@ def main():
                     date_time=st.session_state["date"],
                     location_cta=st.session_state["location"],
                     target_size=target_dimensions,
-                    font_name=selected_font,
-                    title_color_hex=title_col if 'title_col' in locals() else "#FFFFFF",
-                    subtitle_color_hex=sub_col if 'sub_col' in locals() else "#F0F0F0",
-                    accent_color_hex=accent_col if 'accent_col' in locals() else "#00F0FF",
-                    overlay_opacity=overlay_val if 'overlay_val' in locals() else 0.60,
-                    layout_align=align_val if 'align_val' in locals() else "center",
-                    show_border=show_border_val if 'show_border_val' in locals() else True
+                    font_name=resolved_font,
+                    title_color_hex=st.session_state["title_col"],
+                    subtitle_color_hex=st.session_state["sub_col"],
+                    accent_color_hex=st.session_state["accent_col"],
+                    overlay_opacity=st.session_state["overlay_val"],
+                    layout_align=st.session_state["align_val"],
+                    show_border=st.session_state["show_border_val"]
                 )
             st.success(f"{content_type} generated successfully!")
 
