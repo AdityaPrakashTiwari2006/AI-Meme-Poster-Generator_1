@@ -257,6 +257,7 @@ def api_compose(req: ComposeRequest):
                 target_size=(w, h),
                 safe_margin=req.safe_margin,
                 font_name=req.font_name,
+                font_size=req.font_size,
                 title_color_hex=req.title_color_hex,
                 subtitle_color_hex=req.subtitle_color_hex,
                 caption_color_hex=req.caption_color_hex,
